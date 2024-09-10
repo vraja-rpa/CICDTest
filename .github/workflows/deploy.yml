@@ -1,0 +1,38 @@
+name: UiPathRunTests
+on:
+ push:
+ branches:
+ - main
+jobs:
+Build:
+ runs-on: windows-latest
+ steps: 
+ # Checkout code from this repo
+ - name: Checkout Code
+ uses: actions/checkout@v3
+ - name: Print Working Directory
+ run: pwd;
+ ls
+ # Facilitate the UiPath CLI in the github artifacts 
+ - name: Get UiPath CLI
+ run: |
+ New-Item -Path "C:\\" -ItemType "directory" -Name "uipathcli";
+ Invoke-WebRequest "https://uipath.pkgs.visualstudio.com/Public.Feeds/_packaging/UiPathOfficial/nuget/v3/flat2/UiPath.CLI.Windows/23.2.8467.25277/UiPath.CLI.Windows.23.2.8467.25277.nupkg" -OutFile 
+"C:\UiPath.CLI.Windows.23.2.8467.25277.zip"
+ Expand-Archive -LiteralPath "C:\UiPath.CLI.Windows.23.2.8467.25277.zip" -Destination "C:\\uipathcli"
+ # Use uipcli to package and deploy
+ - name: Pack and Test
+ run: |
+ # Build and Deploy the Package
+ $outputDir = Join-Path $env:GITHUB_WORKSPACE "Output"
+ & "C:\\uipathcli\\tools\\uipcli.exe" package pack "$($env:GITHUB_WORKSPACE)\project.json" --output "$outputDir" --autoVersion
+ 
+# Run Test Set 
+& "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://staging.uipath.com" "${{secrets.TENANT_NAME}}" -A 
+${{secrets.ACCOUNT_NAME}} -I ${{secrets.OAUTH_CLIENT_ID}} -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope 
+"OR.Folders OR.BackgroundTasks OR.TestSets OR.TestSetExecutions OR.TestSetSchedules OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read 
+OR.Execution OR.Assets OR.Users.Read OR.Jobs"
+ & "C:\\uipathcli\\tools\\uipcli.exe" test run "https://staging.uipath.com" "${{secrets.TENANT_NAME}}" -A ${{secrets.ACCOUNT_NAME}} -I 
+${{secrets.OAUTH_CLIENT_ID}} -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks 
+OR.TestSets OR.TestSetExecutions OR.TestSetSchedules OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets 
+OR.Users.Read OR.Jobs" -s "TS_CICD"
