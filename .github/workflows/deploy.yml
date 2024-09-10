@@ -25,4 +25,4 @@ jobs:
         run: |
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "Output"
           & "C:\\uipathcli\\tools\\uipcli.exe" package pack "$($env:GITHUB_WORKSPACE)\project.json" --output "$outputDir" --autoVersion
-          & "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://cloud.uipath.com/${{secrets.ACCOUNT_NAME}}/${{secrets.TENANT_NAME}}/orchestrator_/" "${{secrets.TENANT_NAME}}" -A "${{secrets.ACCOUNT_NAME}}" -I "${{secrets.OAUTH_CLIENT_ID}}" -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks OR.Execution OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets OR.Users.Read OR.Jobs"
+          & "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://cloud.uipath.com/" "${{secrets.TENANT_NAME}}" -A "${{secrets.ACCOUNT_NAME}}" -I "${{secrets.OAUTH_CLIENT_ID}}" -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks OR.Execution OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets OR.Users.Read OR.Jobs"
