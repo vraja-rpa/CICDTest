@@ -1,74 +1,34 @@
-name: Development test workflow
+name: UiPathRunAutomation
 
 on:
   push:
     branches:
       - main
 
-# Here the environment variable is declared in workflow level
-env:
-  # Replace with your Orchestrator Values 
-  ORCH_URL: "https://cloud.uipath.com"
-  ORCH_TENANT: Development
-  ORCH_CLIENT_ID: 04b01423-489c-40e9-8e47-cd5fe3f60154
-  ORCH_USER_KEY: ^(q#57b8IH*J@YLg
-  ORCH_ACC_NAME: siriudbtmkjp
-  CLI_URL: "https://uipath.pkgs.visualstudio.com/Public.Feeds/_packaging/UiPath-Official/nuget/v3/flat2/UiPath.CLI.Windows/22.10.8438.32859/UiPath.CLI.Windows.22.10.8438.32859.nupkg"
-
 jobs:
-  print-details:
-    runs-on: ubuntu-latest
-    #runs-on: self-hosted
-    steps:
-      - name: echo-default-env-variables
-        run: |
-          echo "Home: ${HOME}"
-          echo "GITHUB_WORKFLOW: ${GITHUB_WORKFLOW}"
-          echo "GITHUB_ACTIONS: ${GITHUB_ACTIONS}"
-          echo "GITHUB_ACTOR: ${GITHUB_ACTOR}"
-          echo "GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}"
-          echo "GITHUB_EVENT_NAME: ${GITHUB_EVENT_NAME}"
-          echo "GITHUB_WORKSPACE: ${GITHUB_WORKSPACE}"
-          echo "GITHUB_SHA: ${GITHUB_SHA}"
-          echo "GITHUB_REF: ${GITHUB_REF}"
-  cleaner:
-    runs-on: ubuntu-latest
-    #runs-on: self-hosted
-    steps:
-      - name: Runner workspace path
-        run: |
-          echo "Cleaning up previous run"
-          rm -rf "${{ github.workspace }}"
+  Build:
+    runs-on: windows-latest
 
-  build-uipath-nuget-package:
-    # You should be able to run on windows 2019 or windows latest
-    needs: cleaner
-    runs-on: windows-latest
-    #runs-on: self-hosted
-    steps: 
-      - name: Check out repository code
-        # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-        uses: actions/checkout@v2
-      - name: Build Nuget Package
-        shell: pwsh
-        run:  ${{ github.workspace }}\scripts\UiPathPack.ps1 ${{ github.workspace }}\project.json -destination_folder ${{ github.workspace }}\package -autoVersion -cli_url ${{env.CLI_URL}}
-      - name: Upload UiPath Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: Artifacts
-          path: |
-           package/*.*
-           scripts/*.ps1
-  publish-uipath-nuget-package-Dev:
-    needs: build-uipath-nuget-package
-    runs-on: windows-latest
-    #runs-on: self-hosted
-    steps: 
-      - name: Download UiPath Artifacts
-        uses: actions/download-artifact@v2
-        with:
-          name: Artifacts
-      - name: Publish Nuget Package to DEV
-        shell: pwsh
+    steps:
+      # Checkout code from this repo
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Print Working Directory
+      - name: Print Working Directory
+        run: pwd;
+             ls
+
+      # Facilitate the UiPath CLI in the github artifacts
+      - name: Get UiPath CLI
         run: |
-         ${{ github.workspace }}\scripts\UiPathDeploy.ps1 -packages_path ${{ github.workspace }}\package -orchestrator_url ${{env.ORCH_URL}} -orchestrator_tenant ${{env.ORCH_TENANT}} -account_name ${{env.ORCH_ACC_NAME}} -UserKey ${{env.ORCH_CLIENT_ID}}  -UserSecret ${{env.ORCH_USER_KEY}}  -applicationscope "OR.Assets OR.BackgroundTasks OR.Execution OR.Folders OR.Jobs OR.Machines OR.Monitoring OR.Robots OR.Settings OR.TestSetExecutions OR.TestSets OR.TestSetSchedules OR.Users" -folder_organization_unit "CICDdev" -cli_url ${{env.CLI_URL}}
+          New-Item -Path "C:\\" -ItemType "directory" -Name "uipathcli";
+          Invoke-WebRequest "https://uipath.pkgs.visualstudio.com/Public.Feeds/_packaging/UiPath-Official/nuget/v3/flat2/UiPath.CLI.Windows/23.2.8467.25277/UiPath.CLI.Windows.23.2.8467.25277.nupkg" -OutFile "C:\UiPath.CLI.Windows.23.2.8467.25277.zip"
+          Expand-Archive -LiteralPath "C:\UiPath.CLI.Windows.23.2.8467.25277.zip" -Destination "C:\\uipathcli"
+
+      # Build and Deploy the Package
+      - name: Pack and Deploy
+        run: |
+          $outputDir = Join-Path $env:GITHUB_WORKSPACE "Output"
+          & "C:\\uipathcli\\tools\\uipcli.exe" package pack "$($env:GITHUB_WORKSPACE)\project.json" --output "$outputDir" --autoVersion
+          & "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://cloud.uipath.com/siriudbtmkjp/Development/orchestrator_/" "${{secrets.TENANT_NAME}}" -A "${{secrets.ACCOUNT_NAME}}" -I "${{secrets.OAUTH_CLIENT_ID}}" -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks OR.Execution OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets OR.Users.Read OR.Jobs"
