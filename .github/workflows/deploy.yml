@@ -1,34 +1,28 @@
 name: UiPathRunAutomation
-
 on:
   push:
     branches:
       - main
-
 jobs:
   Build:
     runs-on: windows-latest
-
     steps:
       # Checkout code from this repo
       - name: Checkout Code
         uses: actions/checkout@v3
-
       # Print Working Directory
       - name: Print Working Directory
         run: pwd;
              ls
-
       # Facilitate the UiPath CLI in the github artifacts
       - name: Get UiPath CLI
         run: |
           New-Item -Path "C:\\" -ItemType "directory" -Name "uipathcli";
           Invoke-WebRequest "https://uipath.pkgs.visualstudio.com/Public.Feeds/_packaging/UiPath-Official/nuget/v3/flat2/UiPath.CLI.Windows/23.2.8467.25277/UiPath.CLI.Windows.23.2.8467.25277.nupkg" -OutFile "C:\UiPath.CLI.Windows.23.2.8467.25277.zip"
           Expand-Archive -LiteralPath "C:\UiPath.CLI.Windows.23.2.8467.25277.zip" -Destination "C:\\uipathcli"
-
       # Build and Deploy the Package
       - name: Pack and Deploy
         run: |
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "Output"
           & "C:\\uipathcli\\tools\\uipcli.exe" package pack "$($env:GITHUB_WORKSPACE)\project.json" --output "$outputDir" --autoVersion
-          & "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://cloud.uipath.com/siriudbtmkjp/Development/orchestrator_/" "${{secrets.TENANT_NAME}}" -A "${{secrets.ACCOUNT_NAME}}" -I "${{secrets.OAUTH_CLIENT_ID}}" -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks OR.Execution OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets OR.Users.Read OR.Jobs"
+          & "C:\\uipathcli\\tools\\uipcli.exe" package deploy "$outputDir" "https://cloud.uipath.com/${{secrets.ACCOUNT_NAME}}/${{secrets.TENANT_NAME}}/orchestrator_/" "${{secrets.TENANT_NAME}}" -A "${{secrets.ACCOUNT_NAME}}" -I "${{secrets.OAUTH_CLIENT_ID}}" -S "${{secrets.OAUTH_CLIENT_SECRET}}" -o "${{secrets.ORCH_FOLDER}}" --applicationScope "OR.Folders OR.BackgroundTasks OR.Execution OR.Settings.Read OR.Monitoring OR.Robots.Read OR.Machines.Read OR.Execution OR.Assets OR.Users.Read OR.Jobs"
